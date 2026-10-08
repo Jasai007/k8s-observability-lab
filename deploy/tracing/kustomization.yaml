@@ -1,0 +1,8 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/tracing"
+# -----------------------------------------------------------------------------
+# Jaeger v2 all-in-one (module 07): trace storage + UI + OTLP intake in a
+# single pod — the simplest possible tracing backend for a lab.
+# =============================================================================
+resources:
+  - jaeger.yaml

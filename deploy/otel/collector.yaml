@@ -1,0 +1,68 @@
+# =============================================================================
+# OpenTelemetry Collector configuration (contrib distribution)
+# -----------------------------------------------------------------------------
+# Mounted at /etc/otelcol-contrib/config.yaml by the ConfigMap generated in
+# kustomization.yaml (same folder).
+#
+# The Collector is the vendor-neutral telemetry pipeline:
+#
+#   RECEIVERS -> PROCESSORS -> EXPORTERS
+#   (get data)  (shape it)    (send it somewhere)
+#
+# In this lab:
+#   traces  : apps --OTLP/gRPC:4317--> collector --OTLP--> Jaeger
+#   metrics : apps --OTLP------------> collector --exposition on :8889-->
+#                                      (Prometheus can scrape this endpoint)
+#   logs    : apps --OTLP------------> collector --debug--> collector stdout
+# =============================================================================
+
+receivers:
+  # OTLP is the standard OpenTelemetry wire protocol.
+  # gRPC on 4317 and HTTP on 4318 are the official default ports.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # memory_limiter protects the Collector itself: it refuses work before the
+  # pod is OOMKilled. Always put it FIRST in every pipeline.
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  # batch groups telemetry into bigger requests — fewer, larger network calls.
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+exporters:
+  # Traces -> Jaeger (Jaeger v2 accepts OTLP natively on 4317).
+  otlp/jaeger:
+    endpoint: jaeger.observability.svc:4317
+    tls:
+      insecure: true                 # plaintext inside the lab cluster
+  # Metrics -> expose them for Prometheus to scrape on :8889.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  # Logs -> print to the Collector's own log. Great for learning; in production
+  # you would export to Elasticsearch/Loki/whatever instead.
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/jaeger, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug]

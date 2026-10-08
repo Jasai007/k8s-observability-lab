@@ -1,0 +1,76 @@
+# =============================================================================
+# Grafana — workload (the dashboards UI)
+# -----------------------------------------------------------------------------
+# Provisioned (not clicked into existence):
+#   - datasource  : Prometheus
+#   - dashboards  : loaded from the mounted folder every 30s
+#
+#   kubectl apply -k deploy/grafana
+#   scripts/port-forward.sh grafana      -> http://localhost:3000 (admin/admin)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: observability
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:12.4.12
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            # Lab-only credentials. In production these come from a Secret.
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: admin
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            # Dashboards/datasources are provisioned from files — don't let
+            # UI edits silently diverge from git.
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+          livenessProbe:
+            httpGet: {path: /api/health, port: 3000}
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet: {path: /api/health, port: 3000}
+            initialDelaySeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          volumeMounts:
+            # ORDER MATTERS with overlapping paths: the generic storage volume
+            # must be mounted first so the dashboards mount below can sit on
+            # top of it (later mounts shadow earlier ones).
+            - name: storage
+              mountPath: /var/lib/grafana
+            # Each ConfigMap key becomes a file at the target folder.
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+      volumes:
+        - name: storage
+          emptyDir: {}
+        - name: datasources
+          configMap: {name: grafana-datasources}
+        - name: dashboard-provider
+          configMap: {name: grafana-dashboard-provider}
+        - name: dashboards
+          configMap: {name: grafana-dashboards}

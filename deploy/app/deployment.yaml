@@ -1,0 +1,94 @@
+# =============================================================================
+# The demo application — Deployments
+# -----------------------------------------------------------------------------
+# ONE image (apps/demo-api), TWO roles:
+#
+#   demo-api      the "order service" the user calls
+#                 -> calls demo-payment when DEPENDENCY_URL is set
+#   demo-payment  the downstream "payment service"
+#
+# Tracing is OFF by default (no OTEL env var). Module 08 turns it on with:
+#   kubectl -n demo set env deploy/demo-api     OTEL_EXPORTER_OTLP_ENDPOINT=jaeger.observability.svc:4317
+#   kubectl -n demo set env deploy/demo-payment OTEL_EXPORTER_OTLP_ENDPOINT=jaeger.observability.svc:4317
+#   kubectl -n demo rollout restart deploy/demo-api deploy/demo-payment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api
+  namespace: demo
+  labels:
+    app: demo-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-api
+  template:
+    metadata:
+      labels:
+        app: demo-api
+    spec:
+      containers:
+        - name: demo-api
+          image: demo-api:0.1.0
+          imagePullPolicy: IfNotPresent   # image is loaded into kind, never pulled
+          args: ["--service=order"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # Enables the real cross-service call (and distributed traces).
+            - name: DEPENDENCY_URL
+              value: http://demo-payment:8080/api/payment
+            # Module 08 adds this via `kubectl set env` (see file header):
+            # - name: OTEL_EXPORTER_OTLP_ENDPOINT
+            #   value: jaeger.observability.svc:4317
+          # Kubernetes restarts a container that fails liveness, and stops
+          # sending traffic to a pod that fails readiness.
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 3
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 64Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-payment
+  namespace: demo
+  labels:
+    app: demo-payment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-payment
+  template:
+    metadata:
+      labels:
+        app: demo-payment
+    spec:
+      containers:
+        - name: demo-payment
+          image: demo-api:0.1.0
+          imagePullPolicy: IfNotPresent
+          # Same binary, different role: no DEPENDENCY_URL on purpose —
+          # payment is the END of the call chain.
+          args: ["--service=payment"]
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 3
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 64Mi}

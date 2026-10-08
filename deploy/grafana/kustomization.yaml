@@ -1,0 +1,26 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/grafana"
+# -----------------------------------------------------------------------------
+# Everything Grafana needs is generated from this folder:
+#   provisioning/datasources/prometheus.yml  -> datasource (config-as-code)
+#   provisioning/dashboards/dashboards.yml   -> dashboard loader
+#   dashboards/demo-api.json                 -> the dashboard itself
+# No UI clicking, no state to lose — delete the pod and it comes back identical.
+# =============================================================================
+resources:
+  - deployment.yaml
+  - service.yaml
+
+configMapGenerator:
+  - name: grafana-datasources
+    files:
+      - provisioning/datasources/prometheus.yml
+  - name: grafana-dashboard-provider
+    files:
+      - provisioning/dashboards/dashboards.yml
+  - name: grafana-dashboards
+    files:
+      - dashboards/demo-api.json
+
+generatorOptions:
+  disableNameSuffixHash: true

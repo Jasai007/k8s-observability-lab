@@ -1,0 +1,70 @@
+# =============================================================================
+# Jaeger — distributed tracing backend (v2, all-in-one)
+# -----------------------------------------------------------------------------
+# Jaeger v2 runs every component in one process:
+#   :4317 / :4318   OTLP intake (gRPC / HTTP) — where apps send traces
+#   :16686          the trace UI
+#
+# Storage is in-memory: restarting the pod clears all traces. That is fine
+# for a lab — module 11 discusses durable trace storage.
+#
+#   scripts/port-forward.sh jaeger   -> http://localhost:16686
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: observability
+  labels:
+    app: jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/jaeger:2.22.0
+          ports:
+            - name: ui
+              containerPort: 16686
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          readinessProbe:
+            httpGet: {path: /, port: ui}
+            initialDelaySeconds: 10
+          livenessProbe:
+            tcpSocket: {port: ui}
+            initialDelaySeconds: 15
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: observability
+  labels:
+    app: jaeger
+spec:
+  selector:
+    app: jaeger
+  ports:
+    - name: ui
+      port: 16686
+      targetPort: ui
+    # OTLP intake — the address apps/collector send traces to
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http

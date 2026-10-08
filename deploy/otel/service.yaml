@@ -1,0 +1,26 @@
+# =============================================================================
+# OpenTelemetry Collector — Service
+# -----------------------------------------------------------------------------
+# Port names follow the convention used by prometheus.yml service discovery:
+# only the port named "metrics" gets scraped.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: observability
+  labels:
+    app: otel-collector
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+    - name: metrics
+      port: 8889
+      targetPort: metrics

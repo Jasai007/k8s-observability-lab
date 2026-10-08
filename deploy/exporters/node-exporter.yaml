@@ -1,0 +1,91 @@
+# =============================================================================
+# Node Exporter — host metrics as Prometheus metrics
+# -----------------------------------------------------------------------------
+# Runs as a DaemonSet: one pod per node. It reads the node's real /proc and
+# /sys through host mounts, which is why it needs those volumes and
+# hostNetwork/hostPID (it reports on the HOST, not on itself).
+#
+#   kubectl apply -k deploy/exporters
+#   kubectl -n observability port-forward svc/node-exporter 9100:9100
+#   curl -s localhost:9100/metrics | head
+# =============================================================================
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: observability
+  labels:
+    app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      # hostNetwork: listens directly on the node's network namespace so the
+      # exported network metrics describe the host, not a virtual pod NIC.
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.12.1
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            # Mount points that are virtual/noisy in a container environment:
+            - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+          ports:
+            - name: metrics
+              containerPort: 9100
+              hostPort: 9100
+          livenessProbe:
+            httpGet: {path: /metrics, port: 9100}
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet: {path: /metrics, port: 9100}
+            initialDelaySeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            # read-only mounts of the host filesystem — the source of truth
+            # for CPU/memory/disk/network numbers
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              readOnly: true
+      volumes:
+        - name: proc
+          hostPath: {path: /proc}
+        - name: sys
+          hostPath: {path: /sys}
+        - name: root
+          hostPath: {path: /}
+---
+# Service gives node-exporter a stable DNS name for Prometheus to scrape.
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: observability
+  labels:
+    app: node-exporter
+spec:
+  # With hostNetwork the endpoints ARE the nodes — select the node's address.
+  # (headless: no cluster IP, endpoints = podIPs directly)
+  clusterIP: None
+  selector:
+    app: node-exporter
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics

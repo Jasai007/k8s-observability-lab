@@ -1,0 +1,20 @@
+# =============================================================================
+# Grafana datasource provisioning
+# -----------------------------------------------------------------------------
+# Mounted at /etc/grafana/provisioning/datasources/prometheus.yml.
+# Provisioning = config-as-code for Grafana: the datasource appears every time
+# Grafana starts, no clicking through the UI, nothing stored in the database.
+# =============================================================================
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus            # referenced by every dashboard panel
+    type: prometheus
+    access: proxy              # Grafana server queries Prometheus (not the browser)
+    url: http://prometheus.observability.svc:9090
+    isDefault: true
+    editable: true             # allow tweaking in the UI during labs
+    jsonData:
+      timeInterval: 15s        # match Prometheus scrape_interval so rate() sees data

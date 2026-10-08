@@ -1,0 +1,27 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/logging"
+# -----------------------------------------------------------------------------
+# The EFK stack (module 06):
+#   Fluent Bit (DaemonSet)  tails container logs, adds k8s metadata
+#          |
+#          v
+#   Elasticsearch (Deployment)  indexes and stores the logs
+#          |
+#          v
+#   Kibana (Deployment)         search/UI on :5601
+#
+# NOTE: Elasticsearch is memory hungry — give Docker Desktop/kind >= 6 GB.
+# See docs/07-logging.md before deploying if you are short on RAM.
+# =============================================================================
+resources:
+  - elasticsearch.yaml
+  - kibana.yaml
+  - fluent-bit.yaml
+
+configMapGenerator:
+  - name: fluent-bit-config
+    files:
+      - fluent-bit.conf
+
+generatorOptions:
+  disableNameSuffixHash: true

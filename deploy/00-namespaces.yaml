@@ -1,0 +1,24 @@
+# =============================================================================
+# Namespaces — the only file applied before everything else
+# -----------------------------------------------------------------------------
+# Two namespaces keep the lab intentionally simple while still showing the
+# app-vs-platform separation used in real clusters:
+#
+#   observability   monitoring, logging, tracing tooling
+#   demo            the application under observation
+#
+# Apply first:  kubectl apply -f deploy/00-namespaces.yaml
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    app.kubernetes.io/part-of: observability-lab
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  labels:
+    app.kubernetes.io/part-of: observability-lab

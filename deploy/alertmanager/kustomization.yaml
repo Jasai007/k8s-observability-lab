@@ -1,0 +1,17 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/alertmanager"
+# -----------------------------------------------------------------------------
+# Alertmanager is deployed in module 05 together with the alert rules it
+# delivers. Config lives in alertmanager.yml (same folder).
+# =============================================================================
+resources:
+  - deployment.yaml
+  - service.yaml
+
+configMapGenerator:
+  - name: alertmanager-config
+    files:
+      - alertmanager.yml
+
+generatorOptions:
+  disableNameSuffixHash: true

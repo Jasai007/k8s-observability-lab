@@ -1,0 +1,39 @@
+# =============================================================================
+# Prometheus — RBAC (Role Based Access Control)
+# -----------------------------------------------------------------------------
+# Prometheus discovers targets in Kubernetes by LISTING and WATCHING
+# Services, Endpoints and Pods through the API server. It needs permission
+# to do that — this file grants exactly that, nothing more (least privilege).
+#
+#   ServiceAccount  the identity Prometheus logs in with
+#   ClusterRole     what it may do (read three resource types)
+#   ClusterRoleBinding  ties the two together
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  # read-only access required by the "endpoints" service-discovery role
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: observability

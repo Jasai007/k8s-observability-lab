@@ -1,0 +1,99 @@
+# =============================================================================
+# Prometheus configuration
+# -----------------------------------------------------------------------------
+# Mounted into the Prometheus pod at /etc/prometheus/prometheus.yml by the
+# ConfigMap generated in kustomization.yaml (same folder).
+#
+# Data flow (pull model):
+#
+#   target exposes /metrics  --scrape-->>  Prometheus  --PromQL--> Grafana/UI
+#                                         (rules --> Alertmanager)
+# =============================================================================
+
+global:
+  # scrape_interval: how often each target is scraped.
+  # evaluation_interval: how often alerting/recording rules are evaluated.
+  # 15s is the classic default — good for a lab (production often uses 30s).
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alerting rules are evaluated continuously; firing alerts are sent to
+# Alertmanager (Prometheus never notifies anyone by itself).
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+# Where to forward firing alerts. Service DNS resolves inside the cluster
+# (<svc>.<namespace>.svc:<port>).
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager.observability.svc:9093"]
+
+scrape_configs:
+  # ---------------------------------------------------------------------------
+  # 1) Prometheus monitors itself — always the first healthy target, and a
+  #    great source of "is the monitoring healthy?" metrics (scrape duration,
+  #    TSDB size, rule evaluation time).
+  # ---------------------------------------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ---------------------------------------------------------------------------
+  # 2) All scrapable services in the observability namespace, discovered via
+  #    the Kubernetes Endpoints API (service discovery).
+  #
+  #    Why SD instead of static IPs? Pod IPs change on every restart.
+  #    SD means Prometheus re-discovers targets automatically — you never edit
+  #    this file when a pod moves.
+  #
+  #    Targets only EXIST while their Service does. A not-yet-deployed tool
+  #    (e.g. otel-collector before module 09) simply produces no series at all
+  #    — no false "down" alerts.
+  # ---------------------------------------------------------------------------
+  - job_name: observability
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["observability"]
+    relabel_configs:
+      # Keep only the services we want to scrape...
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: alertmanager|node-exporter|kube-state-metrics|otel-collector
+      # ...only the port literally named "metrics" (every Service in this repo
+      # follows that convention — see deploy/**/service.yaml).
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics
+      # Turn discovery metadata into user-friendly labels on each series.
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+
+  # ---------------------------------------------------------------------------
+  # 3) The demo applications, discovered the same way (namespace: demo).
+  #    Deployed in module 05 — before that, this job simply finds nothing.
+  # ---------------------------------------------------------------------------
+  - job_name: demo-apps
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["demo"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name]
+        action: keep
+        regex: demo-api|demo-payment
+      # The app Service names its port "http" instead of "metrics".
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: http
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod

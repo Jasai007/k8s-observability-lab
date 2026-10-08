@@ -1,0 +1,17 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/otel"
+# -----------------------------------------------------------------------------
+# The OpenTelemetry Collector (module 08): one pipeline in front of every
+# backend. Configuration lives in collector.yaml (same folder).
+# =============================================================================
+resources:
+  - deployment.yaml
+  - service.yaml
+
+configMapGenerator:
+  - name: otel-collector-config
+    files:
+      - collector.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true

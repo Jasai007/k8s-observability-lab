@@ -1,0 +1,125 @@
+# =============================================================================
+# Kube State Metrics (KSM) — Kubernetes object state as Prometheus metrics
+# -----------------------------------------------------------------------------
+# Different data source than node-exporter:
+#   node-exporter  reads the HOST kernel (/proc, /sys)
+#   KSM            reads the Kubernetes API (Deployments, Pods, Nodes, ...)
+#
+# KSM metrics are all prefixed kube_* and are what makes alerts like
+# "DeploymentUnavailable" (see rules/learning.yml) possible.
+#
+# RBAC is required: KSM must LIST/WATCH the resource types it reports on.
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+  # core resources KSM watches
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - secrets
+      - nodes
+      - pods
+      - services
+      - resourcequotas
+      - replicationcontrollers
+      - limitranges
+      - persistentvolumeclaims
+      - persistentvolumes
+      - namespaces
+      - endpoints
+    verbs: ["list", "watch"]
+  - apiGroups: ["apps", "extensions"]
+    resources: [daemonsets, deployments, replicasets, statefulsets]
+    verbs: ["list", "watch"]
+  - apiGroups: ["batch"]
+    resources: [cronjobs, jobs]
+    verbs: ["list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: [horizontalpodautoscalers]
+    verbs: ["list", "watch"]
+  - apiGroups: ["policy"]
+    resources: [poddisruptionbudgets]
+    verbs: ["list", "watch"]
+  - apiGroups: ["certificates.k8s.io"]
+    resources: [certificatesigningrequests]
+    verbs: ["list", "watch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: [leases]
+    verbs: ["list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: [storageclasses, volumeattachments]
+    verbs: ["list", "watch"]
+  # KSM scrapes its own /metrics through the API server proxy
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: kube-state-metrics
+    namespace: observability
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: observability
+  labels:
+    app: kube-state-metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      serviceAccountName: kube-state-metrics
+      containers:
+        - name: kube-state-metrics
+          image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
+          ports:
+            - name: metrics
+              containerPort: 8080
+          livenessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-state-metrics
+  namespace: observability
+  labels:
+    app: kube-state-metrics
+spec:
+  selector:
+    app: kube-state-metrics
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics

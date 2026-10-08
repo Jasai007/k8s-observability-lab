@@ -1,0 +1,25 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/prometheus" entry point
+# -----------------------------------------------------------------------------
+# Kustomize ships inside kubectl (no extra install). It does two things here:
+#   1. applies the base manifests in this folder
+#   2. generates ConfigMaps from the config files next to it, so a config edit
+#      never needs copy-pasting into a manifest
+# =============================================================================
+resources:
+  - rbac.yaml
+  - deployment.yaml
+  - service.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml
+  - name: prometheus-rules
+    files:
+      - rules/learning.yml
+
+generatorOptions:
+  # Stable names (no random hash suffix) keep object names, docs and
+  # troubleshooting commands predictable for learners.
+  disableNameSuffixHash: true

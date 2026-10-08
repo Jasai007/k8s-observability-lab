@@ -1,0 +1,82 @@
+# =============================================================================
+# Elasticsearch — log storage and indexing (single node, lab settings)
+# -----------------------------------------------------------------------------
+# IMPORTANT lab trade-offs, all deliberate and commented:
+#   xpack.security.enabled=false   security off so the lab "just works"
+#   discovery.type=single-node     one node, no cluster bootstrap ceremony
+#   ES_JAVA_OPTS=-Xms512m          small heap so it fits in a laptop cluster
+#   emptyDir volume                logs are LOST on pod restart (lab only!)
+#
+# NEVER copy these settings to production — security and persistence are
+# exactly the topics covered in module 11 (production hardening).
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  namespace: observability
+  labels:
+    app: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      securityContext:
+        # The ES image runs as uid 1000; emptyDir needs this group to be
+        # writable by that user.
+        fsGroup: 1000
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: xpack.security.enabled
+              value: "false"
+            - name: ES_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+            - name: cluster.name
+              value: observability-lab
+          ports:
+            - name: http
+              containerPort: 9200
+          # Elasticsearch is SLOW to start — be generous with initial delays
+          # or Kubernetes will kill it while it is still bootstrapping.
+          readinessProbe:
+            httpGet: {path: /_cluster/health, port: 9200}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket: {port: 9200}
+            initialDelaySeconds: 60
+          resources:
+            requests: {cpu: 500m, memory: 1Gi}
+            limits: {cpu: "1", memory: 1536Mi}
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      volumes:
+        - name: data
+          emptyDir: {}       # ephemeral — fine for labs, forbidden in production
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: observability
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: elasticsearch
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http

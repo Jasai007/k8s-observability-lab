@@ -1,0 +1,13 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/app"
+# -----------------------------------------------------------------------------
+# The observed application: demo-api (order service) + demo-payment
+# (downstream dependency). Both run the SAME image from apps/demo-api —
+# only the --service flag and environment differ.
+#
+# Deployed in module 05. Build & load the image first:
+#   scripts/deploy.sh          (builds demo-api:0.1.0 and runs kind load)
+# =============================================================================
+resources:
+  - deployment.yaml
+  - service.yaml

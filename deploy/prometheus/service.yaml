@@ -1,0 +1,23 @@
+# =============================================================================
+# Prometheus — Service
+# -----------------------------------------------------------------------------
+# A Service gives the pods a stable DNS name + virtual IP:
+#   prometheus.observability.svc:9090
+# Pod IPs change on restart; the Service never does.
+# The port is named "metrics" — the repo-wide convention that
+# prometheus.yml (same folder) relies on for service discovery.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: observability
+  labels:
+    app: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: metrics    # references the container port by name

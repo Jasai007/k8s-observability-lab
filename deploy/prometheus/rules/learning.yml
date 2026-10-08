@@ -1,0 +1,103 @@
+# =============================================================================
+# Alerting rules for the labs
+# -----------------------------------------------------------------------------
+# Loaded from /etc/prometheus/rules/*.yml inside the Prometheus pod.
+# Evaluate them yourself in the Prometheus UI: Alerts (top menu).
+#
+# Anatomy of an alerting rule:
+#
+#   expr     the PromQL condition that must be true...
+#   for      ...for this long, before the alert FIRES (guards against flapping)
+#   labels   routing/annotation metadata (severity drives where it is sent)
+#   annotations  human-readable text — always include what to DO about it
+# =============================================================================
+
+groups:
+  # --- Monitoring infrastructure -------------------------------------------
+  - name: infrastructure
+    rules:
+      # A scrape target exists but cannot be scraped (crashed app, broken port,
+      # wrong network policy). With endpoints service-discovery this fires only
+      # for services that really exist.
+      - alert: TargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scrape target {{ $labels.service }} ({{ $labels.instance }}) is down"
+          description: "Prometheus cannot reach /metrics on {{ $labels.instance }}. Check: kubectl -n {{ $labels.namespace }} get pods -o wide"
+
+      # A Deployment has zero available replicas (crash-loop, bad image,
+      # unschedulable pod). This catches what TargetDown cannot: when pods die
+      # so fast that no endpoint is ever registered.
+      - alert: DeploymentUnavailable
+        expr: kube_deployment_status_replicas_available{namespace=~"demo|observability"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Deployment {{ $labels.deployment }} in {{ $labels.namespace }} has no available replicas"
+          description: "Run: kubectl -n {{ $labels.namespace }} describe deployment {{ $labels.deployment }} && kubectl -n {{ $labels.namespace }} get pods"
+
+      # Node resource pressure (from node-exporter).
+      - alert: NodeHighCPU
+        expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node CPU above 85% for 5m on {{ $labels.instance }}"
+
+      - alert: NodeLowMemory
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 10% memory available on {{ $labels.instance }}"
+
+  # --- Demo application -----------------------------------------------------
+  - name: demo-app
+    rules:
+      # Error-rate alert: >20% of requests return 5xx for 2 minutes.
+      # The division is safe when there is no traffic: 0/0 = NaN, and
+      # NaN > 0.2 evaluates to false (no traffic is not an error).
+      - alert: DemoHighErrorRate
+        expr: |
+          sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+            /
+          sum by (service) (rate(http_requests_total[5m]))
+            > 0.2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.service }} error rate > 20%"
+          description: "Check Kibana for level=ERROR logs and Jaeger for failed traces of this service."
+
+      # Latency alert: p95 of /api/orders above 1 second for 2 minutes.
+      # histogram_quantile() turns the histogram buckets into a quantile.
+      - alert: DemoHighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, service) (rate(http_request_duration_seconds_bucket{route="/api/orders"}[5m]))
+          ) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency > 1s for {{ $labels.service }}"
+          description: "Check for injected slowness (?slow=1) or a slow payment dependency."
+
+      # The demo relies on a downstream payment service; orders start failing
+      # with HTTP 502 when it disappears.
+      - alert: DemoPaymentDependencyFailing
+        expr: |
+          sum by (service) (rate(http_requests_total{status="502"}[5m])) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} cannot reach its payment dependency (HTTP 502)"
+          description: "Check demo-payment: kubectl -n demo get pods -l app=demo-payment"

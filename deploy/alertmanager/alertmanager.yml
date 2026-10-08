@@ -1,0 +1,57 @@
+# =============================================================================
+# Alertmanager configuration
+# -----------------------------------------------------------------------------
+# Prometheus DETECTS alerts; Alertmanager ROUTES and DELIVERS them.
+# Mounted at /etc/alertmanager/alertmanager.yml by the ConfigMap generated in
+# kustomization.yaml (same folder).
+#
+# Alert pipeline:
+#
+#   Prometheus rule fires -> Alertmanager groups/deduplicates -> receiver
+#   (email / Slack / PagerDuty / webhook ... — all disabled in this lab)
+# =============================================================================
+
+route:
+  # Default receiver for every alert that no child route matches.
+  receiver: lab-inbox
+  # Group alerts sharing these labels into one notification
+  # (one "firing" message per alertname+namespace instead of one per pod).
+  group_by: [alertname, namespace]
+  # Wait 30s before sending the first notification of a new group —
+  # lets "the other pod of the same deployment" join the same notification.
+  group_wait: 30s
+  # Wait 5s between follow-up notifications for an already-open group.
+  group_interval: 5m
+  # Repeat a still-firing alert every 4h so nobody forgets about it.
+  repeat_interval: 4h
+
+receivers:
+  # --------------------------------------------------------------------------
+  # A receiver with NO integration is valid: alerts are still visible in the
+  # Alertmanager UI and API — perfect for a local lab without SMTP/Slack.
+  # To actually deliver alerts, uncomment ONE of the blocks below and fill in
+  # your real details (never commit real credentials — use Kubernetes Secrets).
+  # --------------------------------------------------------------------------
+  - name: lab-inbox
+    #   email_configs:
+    #     - to: you@example.com
+    #       from: alertmanager@example.com
+    #       smarthost: smtp.example.com:587
+    #       auth_username: alertmanager@example.com
+    #       auth_password: $EMAIL_PASSWORD
+    #   slack_configs:
+    #     - api_url: https://hooks.slack.com/services/XXX/YYY/ZZZ
+    #       channel: "#alerts"
+    #       title: '{{ .Status | toUpper }}: {{ .CommonAnnotations.summary }}'
+    #   webhook_configs:
+    #     - url: http://alert-webhook.example.com:8080/alerts
+
+# Inhibition = suppress noise caused by a bigger problem.
+# "If a critical alert is firing for the same alertname+namespace, hide the
+#  warning/info version of the same problem."
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity=~"warning|info"
+    equal: [alertname, namespace]

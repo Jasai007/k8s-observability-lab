@@ -1,0 +1,14 @@
+# =============================================================================
+# Kustomization — "kubectl apply -k deploy/exporters"
+# -----------------------------------------------------------------------------
+# Infrastructure metric exporters. Deploy them AFTER Prometheus (module 03):
+#   node-exporter      host-level metrics (CPU, RAM, disk, network)
+#   kube-state-metrics Kubernetes OBJECT-state metrics (deployments, pods, ...)
+#
+# The distinction matters:
+#   node-exporter answers "is the machine healthy?"
+#   kube-state-metrics answers "does the cluster think my workloads are healthy?"
+# =============================================================================
+resources:
+  - node-exporter.yaml
+  - kube-state-metrics.yaml

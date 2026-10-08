@@ -1,0 +1,17 @@
+# =============================================================================
+# Alertmanager — Service (port named "metrics" per repo convention)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: observability
+  labels:
+    app: alertmanager
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - name: metrics
+      port: 9093
+      targetPort: metrics
