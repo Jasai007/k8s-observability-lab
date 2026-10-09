@@ -1,5 +1,5 @@
 # =============================================================================
-# CI — runs scripts/validate.sh on every push and pull request.
+# CI — runs scripts/validate.sh on every push, PR, and manual trigger.
 # This is the same command you run locally: bash scripts/validate.sh
 # It verifies file structure, YAML/JSON syntax, kustomize rendering,
 # shell syntax and that the Go app builds.
@@ -9,10 +9,17 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   validate:
+    name: Validate repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,7 +28,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/demo-api/go.mod
+          cache: true
           cache-dependency-path: apps/demo-api/go.sum
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.33.0
 
       - name: Install PyYAML (YAML syntax checking)
         run: python3 -m pip install --user pyyaml
