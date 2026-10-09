@@ -1,4 +1,4 @@
-# Observability & Monitoring — Zero to Hero
+# K8s Observability Lab
 
 A hands-on, self-contained reference for learning observability on Kubernetes
 **from fundamentals to incident response**. You deploy every tool yourself,
@@ -9,9 +9,6 @@ three telemetry signals.
 > The goal is: *an incident happened — I detected it from metrics, explained
 > it from logs, located it with traces, fixed it, and proved the fix.*
 
-Based on the 7-day course
-[iam-veeramalla/observability-zero-to-hero](https://github.com/iam-veeramalla/observability-zero-to-hero),
-restructured into 11 runnable modules with full implementation steps.
 
 ## What you build
 
