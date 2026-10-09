@@ -3,7 +3,12 @@
 # -----------------------------------------------------------------------------
 # The OpenTelemetry Collector (module 08): one pipeline in front of every
 # backend. Configuration lives in collector.yaml (same folder).
+#
+# namespace is LOAD-BEARING: the generated otel-collector-config ConfigMap
+# inherits it, so it lands beside the Deployment that mounts it.
 # =============================================================================
+namespace: observability
+
 resources:
   - deployment.yaml
   - service.yaml

@@ -166,17 +166,6 @@ Operator for Kubernetes.
 4. The goal was never "I installed Prometheus": it is
    *"an incident happened — I detected it, explained it, fixed it, proved it."*
 
-## Interview questions
-
-1. Design the observability stack for a 50-service shop: what do you pick,
-   what do you run twice, and what do you cut?
-2. Your Prometheus OOMs overnight. What do you check, and what is the
-   permanent fix?
-3. How do you keep alert noise manageable at 100+ services?
-4. Cardinality bomb went to production — how do you find the culprit and
-   stop the bleeding *now*?
-5. Metrics, logs, traces: which do you sample, and how do you decide rates?
-
 ## Done
 
 Return to the [README](../README.md) — or revisit any module; the docs are

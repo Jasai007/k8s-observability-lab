@@ -122,11 +122,6 @@ bash scripts/cluster-down.sh    # ONLY when you are fully done with the course
 2. Namespaces: `observability` (tools) vs `demo` (app).
 3. `describe` explains *why* something is broken; `logs` shows *what* it says.
 
-## Interview questions
-
-1. What does `kubectl describe pod` show that `kubectl logs` does not?
-2. Why prefer kind/minikube over a managed cluster for learning?
-3. What is a kubeconfig context, and what does `kubectl config use-context` change?
 
 ## Next
 

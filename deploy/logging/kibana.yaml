@@ -3,6 +3,16 @@
 # -----------------------------------------------------------------------------
 #   scripts/port-forward.sh kibana   -> http://localhost:5601
 #   First run: create a data view/index pattern "observability-*"
+#
+# MEMORY sizing (read this before touching limits): Kibana 9 boots ~200
+# plugins inside one Node.js process. Uncapped, its heap grows past 580MB
+# during setup and V8 aborts with "JavaScript heap out of memory" (exit 134).
+#   NODE_OPTIONS=--max-old-space-size=700  caps the heap below the limit
+#   limits.memory=1Gi                      smallest Kibana 9 boots in reliably
+# On hosts with <8GB RAM this stack stays tight by design — module 11 covers
+# trimming ES_JAVA_OPTS / scaling replicas to zero when logs are idle.
+# Probes are deliberately SLOW: Kibana needs 2-3 min on a small kind node;
+# aggressive delays restart it mid-boot and inflate the restart count.
 # =============================================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -29,20 +39,22 @@ spec:
               value: http://elasticsearch:9200
             - name: xpack.security.enabled
               value: "false"
+            - name: NODE_OPTIONS
+              value: --max-old-space-size=700
           ports:
             - name: http
               containerPort: 5601
           readinessProbe:
             httpGet: {path: /api/status, port: 5601}
-            initialDelaySeconds: 30
+            initialDelaySeconds: 90
             periodSeconds: 10
             failureThreshold: 12
           livenessProbe:
             tcpSocket: {port: 5601}
-            initialDelaySeconds: 60
+            initialDelaySeconds: 120
           resources:
             requests: {cpu: 250m, memory: 512Mi}
-            limits: {cpu: "1", memory: 768Mi}
+            limits: {cpu: "1", memory: 1Gi}
 ---
 apiVersion: v1
 kind: Service

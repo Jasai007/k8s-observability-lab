@@ -6,7 +6,12 @@
 #   provisioning/dashboards/dashboards.yml   -> dashboard loader
 #   dashboards/demo-api.json                 -> the dashboard itself
 # No UI clicking, no state to lose — delete the pod and it comes back identical.
+#
+# namespace is LOAD-BEARING: the three generated grafana-* ConfigMaps inherit
+# it, so they land beside the Deployment that mounts them.
 # =============================================================================
+namespace: observability
+
 resources:
   - deployment.yaml
   - service.yaml

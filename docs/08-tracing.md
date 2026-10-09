@@ -168,15 +168,6 @@ Tracing stays on for modules 09–11 (module 09 only changes the *endpoint*).
    work time.
 4. `trace_id` in logs is the bridge between signals — always emit it.
 
-## Interview questions
-
-1. What travels in a `traceparent` header? What happens if it is stripped?
-2. Sampled vs unsampled tracing — why is 100% sampling expensive?
-3. What is the difference between a span and a trace?
-4. How would you trace a message-queue consumer (no HTTP headers)?
-5. Why does the client span usually start slightly before / end slightly
-   after the server span?
-
 ## Next
 
 Unify collection through one pipeline:

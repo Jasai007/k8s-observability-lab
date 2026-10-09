@@ -183,15 +183,6 @@ None — queries are read-only.
 4. NaN comparisons are false: silence ≠ success for statistical queries you
    *want* to fire.
 
-## Interview questions
-
-1. `rate()` vs `irate()` — when does each shine? (irate reacts to the last
-   two samples: spiky but fast; rate smooths over the window.)
-2. Counter restarted (pod redeployed) — what does `rate()` do?
-3. Why is `[5m]` on a 15s scrape reasonable? What about `[5s]`?
-4. Write a query for "requests per second per status code".
-5. What is a recording rule and when would you create one?
-
 ## Next
 
 Instrument an application and watch these concepts come alive:

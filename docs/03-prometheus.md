@@ -166,6 +166,7 @@ curl -s localhost:9090/api/v1/query?query=count\(up\)    # (port-forward first)
 | Symptom | Cause & fix |
 |---|---|
 | Pod `CreateContainerConfigError` | ConfigMap name mismatch — re-run `kubectl apply -k deploy/prometheus` |
+| `FailedMount ... configmap "prometheus-config/rules" not found` | namespace mismatch: Pod in `observability` looks there, ConfigMap landed in `default` — happens when applying with plain `kubectl apply -f` (skips `configMapGenerator`) or an outdated checkout. Fix: `kubectl delete configmap prometheus-config prometheus-rules -n default; kubectl delete -k deploy/prometheus; kubectl apply -k deploy/prometheus` |
 | Prometheus log: `server returned HTTP 403` on discovery | RBAC missing — `kubectl apply -k deploy/prometheus` applied the ClusterRole? check `kubectl get clusterrole prometheus` |
 | Target shows `context deadline exceeded` | pod or resources overloaded — `kubectl -n observability top pods`, raise limits |
 | Target `connection refused` after pod restart | SD has not refreshed yet — wait ~30s, refresh /targets |
@@ -185,16 +186,6 @@ Not needed — later modules build on this. (Full teardown:
 2. RBAC exists because discovery is an API call — least privilege in action.
 3. node-exporter = machine health; kube-state-metrics = object health.
 4. Grafana config lives in git; the pod is disposable.
-
-## Interview questions
-
-1. Pull vs push metrics collection — trade-offs?
-2. What does `up` metric mean? What does `up == 0` tell you?
-3. Why does Prometheus need a ClusterRole — which resources, and why?
-4. What problem does service discovery solve that static_configs cannot?
-5. How do you add a new scrape target in this repo? (Answer: give the Service
-   a port named `metrics` and add its name to the keep-regex in
-   `prometheus.yml`, then re-apply.)
 
 ## Next
 

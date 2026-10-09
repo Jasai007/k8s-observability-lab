@@ -55,7 +55,7 @@ required=(
   deploy/prometheus/rules/learning.yml
   deploy/alertmanager/alertmanager.yml
   deploy/otel/collector.yaml
-  deploy/logging/fluent-bit.conf
+  deploy/logging/fluent-bit-config.yaml
   apps/demo-api/main.go
   apps/demo-api/Dockerfile
 )
@@ -63,7 +63,7 @@ for f in "${required[@]}"; do
   if [ -f "$f" ]; then ok "$f"; else fail "$f missing"; fi
 done
 
-echo "== 2/7 YAML parses =="
+echo "== 2/7 YAML parses + LF line endings =="
 # $PY may be "py -3" (two words) — deliberately unquoted when invoked.
 if [ -n "$PY" ] && $PY -c "import yaml" 2>/dev/null; then
   yaml_files=$(find deploy .github -type f \( -name '*.yml' -o -name '*.yaml' \) 2>/dev/null)
@@ -81,6 +81,17 @@ for path in sys.argv[1:]:
 sys.exit(1 if bad else 0)
 PYEOF
   then ok "all YAML files parse"; else fail "YAML syntax errors (above)"; fi
+  # Fluent Bit's classic config parser cannot read CRLF line endings
+  # (CrashLoopBackOff: "could not open parser configuration file"), and CRLF
+  # in shell scripts breaks on Linux. .gitattributes enforces LF in git, but
+  # catch a bad checkout here too.
+  crlf_files=$(grep -rl "$(printf '\r')" deploy scripts apps 2>/dev/null || true)
+  if [ -z "$crlf_files" ]; then
+    ok "LF line endings (no CRLF in deploy/ scripts/ apps/)"
+  else
+    echo "$crlf_files" | sed 's/^/    /'
+    fail "CRLF line endings found (see files above) — convert to LF"
+  fi
 else
   echo "  [SKIP] PyYAML not installed (pip install pyyaml)"
 fi
@@ -100,14 +111,47 @@ else
   echo "  [SKIP] no working python interpreter found"
 fi
 
-echo "== 4/7 kustomize renders every component =="
+echo "== 4/7 kustomize renders every component in the right namespace =="
 if command -v kubectl >/dev/null 2>&1; then
   for dir in deploy/*/; do
     [ -f "$dir/kustomization.yaml" ] || continue
-    if kubectl kustomize "$dir" >/dev/null 2>&1; then
-      ok "$dir"
+    rendered="$(kubectl kustomize "$dir" 2>&1)" || { fail "$dir does not render (kubectl kustomize $dir)"; continue; }
+    ok "$dir renders"
+    # Regression guard: Namespace-less kustomizations used to drop generated
+    # ConfigMaps into `default` while Pods mounted them from `observability`
+    # (FailedMount: configmap not found). Every namespaced object that renders
+    # out of deploy/<x> must therefore carry a namespace.
+    case "$dir" in
+      deploy/app/) want="namespace: demo" ;;
+      *)           want="namespace: observability" ;;
+    esac
+    # Every rendered namespaced kind (Deployment/DaemonSet/Service/ConfigMap/
+    # ServiceAccount/Role/RoleBinding) must declare a namespace. Cluster-scoped
+    # kinds (ClusterRole/ClusterRoleBinding) must NOT — check both directions.
+    if echo "$rendered" | $PY -c "
+import sys, yaml
+want = '''$want'''.split(': ')[1]
+bad = []
+for doc in yaml.safe_load_all(sys.stdin):
+    if not isinstance(doc, dict) or 'kind' not in doc:
+        continue
+    if doc['kind'] in ('ClusterRole', 'ClusterRoleBinding'):
+        if doc.get('metadata', {}).get('namespace'):
+            bad.append(doc['kind'] + ' must NOT have a namespace')
+        continue
+    if doc['kind'] in ('Deployment', 'DaemonSet', 'StatefulSet', 'Service',
+                       'ConfigMap', 'ServiceAccount', 'Role', 'RoleBinding'):
+        ns = doc.get('metadata', {}).get('namespace')
+        if ns != want:
+            bad.append('%s/%s has namespace=%r, want %r' % (
+                doc['kind'], doc.get('metadata', {}).get('name'), ns, want))
+if bad:
+    print('\n'.join('    ' + b for b in bad))
+    sys.exit(1)
+"; then
+      ok "$dir objects pinned to [$want]"
     else
-      fail "$dir does not render (kubectl kustomize $dir)"
+      fail "$dir namespace drift (see lines above)"
     fi
   done
 else

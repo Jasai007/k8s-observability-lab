@@ -166,6 +166,3 @@ bash scripts/cleanup.sh       # remove everything deployed, keep the cluster
 bash scripts/cluster-down.sh  # delete the cluster entirely
 ```
 
-## License
-
-MIT — see [LICENSE](LICENSE).

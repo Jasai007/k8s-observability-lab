@@ -163,17 +163,6 @@ None — this is the final architecture (module 11 hardens it).
    centralized — this is what "unified observability" means concretely.
 5. Observability stacks need their own observability (`otelcol_*` metrics).
 
-## Interview questions
-
-1. DaemonSet vs sidecar vs gateway deployment modes for a Collector — pick
-   one for this lab and justify it.
-2. What is the difference between the `debug` exporter and the old `logging`
-   exporter? (Renaming — component names evolve; check current docs.)
-3. When would you use a `filter` processor? When is it the wrong place?
-4. What is a connector (e.g. spanmetrics) and why is it not "just a
-   processor"?
-5. How do you troubleshoot "spans accepted but not exported"?
-
 ## Next
 
 Use every signal together during a real failure:

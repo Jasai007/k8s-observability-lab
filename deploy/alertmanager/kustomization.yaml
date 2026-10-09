@@ -3,7 +3,12 @@
 # -----------------------------------------------------------------------------
 # Alertmanager is deployed in module 05 together with the alert rules it
 # delivers. Config lives in alertmanager.yml (same folder).
+#
+# namespace is LOAD-BEARING: the generated alertmanager-config ConfigMap
+# inherits it, so it lands beside the Deployment that mounts it.
 # =============================================================================
+namespace: observability
+
 resources:
   - deployment.yaml
   - service.yaml

@@ -146,15 +146,6 @@ Nothing was deployed in this module.
 3. Bounded labels only; cardinality is the classic production failure.
 4. SLIs/SLOs make "reliable enough" a number instead of an opinion.
 
-## Interview questions
-
-1. Monitoring vs observability — give a question only observability can answer.
-2. Which signal do you reach for first when p95 latency spikes, and why?
-3. What is a counter vs a gauge? Why must a counter never be reset randomly?
-4. Define SLI, SLO and error budget. What does an exhausted budget change in
-   your team's behaviour?
-5. What is cardinality, and what happens when a label is unbounded?
-
 ## Next
 
 Set up your machine and cluster: [02 — Environment setup](02-environment-setup.md)

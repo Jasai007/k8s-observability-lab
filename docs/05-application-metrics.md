@@ -184,16 +184,6 @@ Keep the app running — modules 06–10 use it. Traffic generators: Ctrl-C.
    be healthy while the business is failing (and vice versa).
 4. `docker build` ≠ cluster access — kind needs `kind load`.
 
-## Interview questions
-
-1. Walk through what happens in `main.go` when a request returns 500 — which
-   signals are emitted, in which section of the code?
-2. Why is `route` a label but `order_id` is not? What breaks if it were?
-3. Counter vs histogram: why can't you compute p95 from a counter?
-4. How does Prometheus discover these pods? What happens if you rename the
-   Service?
-5. How would you instrument a background job (no HTTP) — which metric types?
-
 ## Next
 
 Make the system wake you up when it breaks: [06 — Alerting](06-alerting.md)

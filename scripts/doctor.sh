@@ -19,6 +19,7 @@ cd "$ROOT_DIR"
 echo "== Observability lab doctor =="
 
 # --- required command-line tools ---------------------------------------------
+
 check_required() {
   local name="$1" hint="$2"
   if command -v "$name" >/dev/null 2>&1; then

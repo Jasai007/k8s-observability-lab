@@ -196,15 +196,6 @@ kubectl -n demo scale deploy/demo-payment --replicas=1
 3. Evidence before action; verification after action; timeline always.
 4. Golden Signals are a checklist for "what should I even look at?".
 
-## Interview questions
-
-1. Walk me through your first 5 minutes of an "orders are failing" page.
-2. 502 vs 500 vs 504 — what does each suggest about where to look?
-3. How do you correlate a log line to a trace? What must the app emit?
-4. What makes an incident review blameless — and what should it produce?
-5. Which Golden Signal was *missing* from your dashboard during the outage —
-   how would you add it?
-
 ## Next
 
 Harden it all and prove you own the stack:

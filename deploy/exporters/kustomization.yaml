@@ -8,7 +8,12 @@
 # The distinction matters:
 #   node-exporter answers "is the machine healthy?"
 #   kube-state-metrics answers "does the cluster think my workloads are healthy?"
+#
+# namespace pins every resource here into `observability`, so node-exporter
+# and kube-state-metrics never depend on the kubectl current-context namespace.
 # =============================================================================
+namespace: observability
+
 resources:
   - node-exporter.yaml
   - kube-state-metrics.yaml

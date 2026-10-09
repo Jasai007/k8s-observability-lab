@@ -12,16 +12,24 @@
 #
 # NOTE: Elasticsearch is memory hungry — give Docker Desktop/kind >= 6 GB.
 # See docs/07-logging.md before deploying if you are short on RAM.
+#
+# namespace is LOAD-BEARING: the generated fluent-bit-config ConfigMap
+# inherits it, so it lands beside the DaemonSet that mounts it.
 # =============================================================================
+namespace: observability
+
 resources:
   - elasticsearch.yaml
   - kibana.yaml
   - fluent-bit.yaml
 
 configMapGenerator:
+  # One YAML-format Fluent Bit config (service + parsers + pipeline in a
+  # single file — v4/v5 rejects classic-format [PARSER] sections, so we use
+  # the YAML format instead of splitting into two classic files).
   - name: fluent-bit-config
     files:
-      - fluent-bit.conf
+      - fluent-bit.yaml=fluent-bit-config.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

@@ -134,6 +134,9 @@ into Jaeger, next module.
 | Symptom | Cause & fix |
 |---|---|
 | ES pod `OOMKilled` / CrashLoop | not enough RAM — raise Docker Desktop memory, `kubectl -n observability delete pod -l app=elasticsearch` |
+| Fluent Bit CrashLoop: `Sections 'parser' ... not valid in the main configuration file` | `[PARSER]` was placed inside `fluent-bit.conf` — v4/v5 forbids it. Parser must live in `parsers.conf` (separate `fluent-bit-parsers` ConfigMap, `Parsers_File` in main conf) — fixed in this repo, re-apply: `kubectl apply -k deploy/logging` |
+| Fluent Bit CrashLoop: `could not open parser configuration file` | `Parsers_File` points at a path no ConfigMap provides — check `kubectl -n observability get cm fluent-bit-parsers` exists and `fluent-bit.yaml` mounts it at that exact path. ALSO: Windows CRLF line endings in `*.conf` break Fluent Bit's parser — this repo enforces LF via `.gitattributes`, and `validate.sh` fails on CRLF |
+| Kibana CrashLoop, exit 134, `JavaScript heap out of memory` | Node heap exceeded container limit during plugin setup — this repo caps it via `NODE_OPTIONS=--max-old-space-size=700` with `limits.memory=1Gi`. If still OOMing, host RAM is the ceiling: give Docker ≥8GB or scale the stack to zero when idle (see Cleanup below) |
 | ES log: `max virtual memory areas vm.max_map_count [65530] is too low` | host kernel setting — on Linux: `sudo sysctl -w vm.max_map_count=262144` (Docker Desktop VMs are usually fine) |
 | ES `yellow` forever | normal for single-node with replicas>1 — for a lab, green-vs-yellow can be ignored; health endpoint still `green` here since single-node disables replica allocation |
 | Kibana `Unable to connect` | ES still starting — wait and check `kubectl -n observability logs deploy/elasticsearch --tail 20` |
@@ -162,15 +165,6 @@ kubectl -n observability scale deploy/elasticsearch deploy/kibana --replicas=1
    Kibana (and later correlation) useful.
 4. Lab shortcuts (security off, emptyDir storage) are exactly what module 11
    tells you to fix in production.
-
-## Interview questions
-
-1. Why a DaemonSet for log collection — what would a Deployment miss?
-2. What metadata does the Kubernetes filter add, and why is it valuable?
-3. ELK vs EFK vs Loki — one sentence on the trade-off (cost, scale, query
-   model)?
-4. How do you find logs of a pod that already crashed and restarted?
-5. What is a data view / index pattern, and what problem does it solve?
 
 ## Next
 

@@ -3,6 +3,11 @@
 # -----------------------------------------------------------------------------
 # Jaeger v2 all-in-one (module 07): trace storage + UI + OTLP intake in a
 # single pod — the simplest possible tracing backend for a lab.
+#
+# namespace pins this resource into `observability`, independent of the
+# kubectl current-context namespace.
 # =============================================================================
+namespace: observability
+
 resources:
   - jaeger.yaml

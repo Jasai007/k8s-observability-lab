@@ -7,7 +7,12 @@
 #
 # Deployed in module 05. Build & load the image first:
 #   scripts/deploy.sh          (builds demo-api:0.1.0 and runs kind load)
+#
+# namespace pins every resource here into `demo`, so the app never depends on
+# the user's kubectl current-context namespace.
 # =============================================================================
+namespace: demo
+
 resources:
   - deployment.yaml
   - service.yaml

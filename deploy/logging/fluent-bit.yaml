@@ -5,7 +5,7 @@
 # Kubernetes metadata (pod, namespace, container, labels), parses the JSON the
 # app emits, and ships it to Elasticsearch.
 #
-# RBAC: the [FILTER kubernetes] section must LIST/WATCH pods and namespaces
+# RBAC: the kubernetes filter must LIST/WATCH pods and namespaces
 # to resolve metadata — granted below with read-only verbs.
 # =============================================================================
 apiVersion: v1
@@ -70,12 +70,16 @@ spec:
           resources:
             requests: {cpu: 50m, memory: 64Mi}
             limits: {cpu: 200m, memory: 128Mi}
+          # The fluent-bit-config ConfigMap holds the whole YAML-format config
+          # (service + parsers + pipeline, one file). Mounted as a FILE so the
+          # container's default conf dir stays intact. Started via args below.
+          args:
+            - -c
+            - /fluent-bit/etc/fluent-bit.yaml
           volumeMounts:
-            # The generated ConfigMap contains exactly one key (fluent-bit.conf);
-            # mount it as a FILE so the image's own parsers.conf stays intact.
             - name: config
-              mountPath: /fluent-bit/etc/fluent-bit.conf
-              subPath: fluent-bit.conf
+              mountPath: /fluent-bit/etc/fluent-bit.yaml
+              subPath: fluent-bit.yaml
             # Container log files written by containerd (read-only by design)
             - name: varlog
               mountPath: /var/log

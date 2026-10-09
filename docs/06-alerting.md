@@ -163,14 +163,6 @@ If you created silences, expire them. Everything else stays for later modules.
 3. Annotations must tell a human what to DO, not just what happened.
 4. Silences are for maintenance windows, not for ignoring reality.
 
-## Interview questions
-
-1. What is the difference between `pending` and `firing`?
-2. How does Alertmanager deduplicate alerts from 3 replicas of one service?
-3. What does an inhibition rule do? Give a real example.
-4. Alert on CPU vs alert on error rate — which is symptom-based, why?
-5. Who evaluates rules — Prometheus or Alertmanager? Who sends emails?
-
 ## Next
 
 Metrics answer *that* it broke; logs answer *what* broke:

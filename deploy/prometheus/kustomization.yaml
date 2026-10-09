@@ -5,7 +5,14 @@
 #   1. applies the base manifests in this folder
 #   2. generates ConfigMaps from the config files next to it, so a config edit
 #      never needs copy-pasting into a manifest
+#
+# The namespace field below is LOAD-BEARING: generated ConfigMaps inherit it,
+# so they land in the same namespace as the Deployment that mounts them.
+# Without it, ConfigMaps go to your kubectl current-context namespace
+# (usually `default`) while the Pod looks in `observability` -> FailedMount.
 # =============================================================================
+namespace: observability
+
 resources:
   - rbac.yaml
   - deployment.yaml

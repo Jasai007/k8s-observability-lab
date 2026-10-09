@@ -1,0 +1,5 @@
+# Enforce LF everywhere in git. Without this, Windows checkouts convert text
+# files to CRLF — which Fluent Bit's classic config parser cannot read
+# (CrashLoopBackOff: "could not open parser configuration file"). YAML/Go/
+# shell tolerate CRLF, but nothing here needs it, so normalize everything.
+* text=auto eol=lf
